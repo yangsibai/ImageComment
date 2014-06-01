@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .canvas {
+            float: left;
+        }
+    </style>
+</head>
+
+<body>
+<div id="container"
+     class="canvas"></div>
+<script src="./jquery-2.0.3.min.js"></script>
+<script src="./kinetic-v5.1.0.min.js"></script>
+<script defer="defer">
+    $(document).ready(function () {
+        var stage = new Kinetic.Stage({
+            container: 'container',
+            width: 900,
+            height: 700
+        });
+
+        var layer = new Kinetic.Layer();
+        var imageObj = new Image();
+
+        imageObj.onload = function () {
+
+            var img = new Kinetic.Image({
+                x: 10,
+                y: 10,
+                image: imageObj,
+                width: 900,
+                height: 700
+            });
+
+            var isPainting = false;
+            var lineThickness = 2;
+
+            var startX, startY;
+            var tmpRect;
+            stage.on('mousedown', function () {
+                isPainting = true;
+                var pos = stage.getPointerPosition();
+                startX = parseInt(pos.x);
+                startY = parseInt(pos.y);
+            }).on('mouseup', function () {
+                startX = null;
+                startY = null;
+                isPainting = false;
+            }).on('mouseout', function () {
+                startX = null;
+                startY = null;
+                isPainting = false;
+            }).on('mousemove', function () {
+                if (isPainting) {
+                    var pos = stage.getPointerPosition();
+
+                    var mouseX = parseInt(pos.x);
+                    var mouseY = parseInt(pos.y);
+                    var dx = mouseX - startX;
+                    var dy = mouseY - startY;
+                    var rectCount = Math.sqrt(dx * dx + dy * dy) / lineThickness;
+
+                    if (rectCount <= 1) {
+                        tmpRect = new Kinetic.Rect({
+                            x: mouseX,
+                            y: mouseY,
+                            width: lineThickness,
+                            height: lineThickness,
+                            fill: 'black',
+                            stroke: 'black',
+                            strokeWidth: lineThickness,
+                            lineJoin: 'round',
+                            lineCap: 'round'
+                        });
+                        layer.add(tmpRect);
+                        tmpRect = null;
+                    } else {
+                        for (var i = 0; i < rectCount; i++) {
+                            // calc an XY between starting & ending drag points
+                            var nextX = startX + dx * i / rectCount;
+                            var nextY = startY + dy * i / rectCount;
+                            // add a rect at the calculated XY
+                            tmpRect = new Kinetic.Rect({
+                                x: nextX,
+                                y: nextY,
+                                width: lineThickness,
+                                height: lineThickness,
+                                fill: 'red',
+                                stroke: 'black',
+                                strokeWidth: lineThickness,
+                                lineJoin: 'round',
+                                lineCap: 'round'
+                            });
+                            layer.add(tmpRect);
+                            tmpRect = null;
+                        }
+                    }
+                    layer.draw();
+                    startX = mouseX;
+                    startY = mouseY;
+                }
+            });
+
+            layer.add(img);
+            stage.add(layer);
+        };
+
+        imageObj.src = "./image.jpg";
+    });
+</script>
+</body>
+
+</html>
