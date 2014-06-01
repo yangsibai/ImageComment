@@ -7,20 +7,107 @@
     <style>
         html, body {
             margin: 0;
-            padding: 0;
+            padding: 20px 30px;
         }
 
         .canvas {
             float: left;
+            border: 2px solid #acaae3;
+        }
+
+        .tool-bar img {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+        }
+
+        #noteTemplate {
+            display: none;
+        }
+
+        .reviews {
+            margin-left: 960px;
+        }
+
+        .note {
+            font-size: 14px;
+            width: 300px;
+            min-height: 100px;
+            padding: 5px 10px;
+            border: 1px solid #888;
+            box-shadow: 1px 1px 1px #acaae3;
+            border-radius: 5px;
+            background-color: #FCFDE3;
+            margin-bottom: 10px;
+        }
+
+        .note .title {
+            margin-bottom: 5px;
+        }
+
+        .note .author {
+            font-weight: bold;
+        }
+
+        .note .time {
+            color: #444;
+        }
+
+        .note .review {
+            padding: 3px 5px;
+            width: 280px;
+            min-height: 50px;
+            resize: vertical;
+        }
+
+        .explain {
+            clear: both;
+        }
+
+        .pageTitle {
+            margin-bottom: 30px;
         }
     </style>
 </head>
 
 <body>
+<h2 class="pageTitle">图片批注</h2>
+
+<div class="tool-bar">
+    <img src="./Images/pin-black.png">
+    <img src="./Images/pin-blue.png">
+    <img src="./Images/pin-green.png">
+    <img src="./Images/pin-red.png">
+    <img src="./Images/pin-yellow.png">
+    <button id="none_pin">停止添加批注</button>
+</div>
 <div id="container"
      class="canvas"></div>
-<script src="./jquery-2.0.3.min.js"></script>
-<script src="./kinetic-v5.1.0.min.js"></script>
+<div class="reviews">
+</div>
+<div class="explain">
+    <h4>说明：</h4>
+    <ul>
+        <li>选择一种图钉，然后点击图片，可以添加一条批注</li>
+        <li>点击停止添加批注后，点击图片不再添加批注</li>
+        <li>鼠标可以拖动图钉</li>
+    </ul>
+</div>
+<div class="note"
+     id="noteTemplate">
+    <div class="title">
+        <p class="author">massimo</p>
+
+        <p class="time">2014-5-31 16:41</p>
+    </div>
+    <div class="content">
+        <textarea class="review"
+                  placeholder="在这里添加批注"></textarea>
+    </div>
+</div>
+<script src="jquery-2.0.3.min.js"></script>
+<script src="kinetic-v5.1.0.min.js"></script>
+<script src="jquery.line.js"></script>
 <script defer="defer">
     $(document).ready(function () {
         var stage = new Kinetic.Stage({
@@ -30,84 +117,28 @@
         });
 
         var layer = new Kinetic.Layer();
-        var imageObj = new Image();
+        var noteLayer = new Kinetic.Layer();
+        var pin = false;
+        var pinImg;
+        var noteId = 1;
 
+
+        var imageObj = new Image();
         imageObj.onload = function () {
 
             var img = new Kinetic.Image({
-                x: 10,
-                y: 10,
+                x: 0,
+                y: 0,
                 image: imageObj,
                 width: 900,
                 height: 700
             });
 
             var isPainting = false;
-            var lineThickness = 2;
-
-            var startX, startY;
-            var tmpRect;
             stage.on('mousedown', function () {
-                isPainting = true;
-                var pos = stage.getPointerPosition();
-                startX = parseInt(pos.x);
-                startY = parseInt(pos.y);
-            }).on('mouseup', function () {
-                startX = null;
-                startY = null;
-                isPainting = false;
-            }).on('mouseout', function () {
-                startX = null;
-                startY = null;
-                isPainting = false;
-            }).on('mousemove', function () {
-                if (isPainting) {
+                if (pin) {
                     var pos = stage.getPointerPosition();
-
-                    var mouseX = parseInt(pos.x);
-                    var mouseY = parseInt(pos.y);
-                    var dx = mouseX - startX;
-                    var dy = mouseY - startY;
-                    var rectCount = Math.sqrt(dx * dx + dy * dy) / lineThickness;
-
-                    if (rectCount <= 1) {
-                        tmpRect = new Kinetic.Rect({
-                            x: mouseX,
-                            y: mouseY,
-                            width: lineThickness,
-                            height: lineThickness,
-                            fill: 'black',
-                            stroke: 'black',
-                            strokeWidth: lineThickness,
-                            lineJoin: 'round',
-                            lineCap: 'round'
-                        });
-                        layer.add(tmpRect);
-                        tmpRect = null;
-                    } else {
-                        for (var i = 0; i < rectCount; i++) {
-                            // calc an XY between starting & ending drag points
-                            var nextX = startX + dx * i / rectCount;
-                            var nextY = startY + dy * i / rectCount;
-                            // add a rect at the calculated XY
-                            tmpRect = new Kinetic.Rect({
-                                x: nextX,
-                                y: nextY,
-                                width: lineThickness,
-                                height: lineThickness,
-                                fill: 'red',
-                                stroke: 'black',
-                                strokeWidth: lineThickness,
-                                lineJoin: 'round',
-                                lineCap: 'round'
-                            });
-                            layer.add(tmpRect);
-                            tmpRect = null;
-                        }
-                    }
-                    layer.draw();
-                    startX = mouseX;
-                    startY = mouseY;
+                    newPin(parseInt(pos.x), parseInt(pos.y), pinImg);
                 }
             });
 
@@ -116,6 +147,86 @@
         };
 
         imageObj.src = "./image.jpg";
+
+        $(".tool-bar img").click(function () {
+            var src = $(this).attr('src');
+            $('.canvas').css('cursor', 'url("' + src + '"),auto');
+            pin = true;
+            pinImg = src;
+        });
+
+        $("#none_pin").click(function () {
+            pin = false;
+            $('.canvas').css('cursor', 'default');
+            pinImg = null;
+        });
+
+        /**
+         * add new pin
+         * @param x
+         * @param y
+         * @param src
+         */
+        function newPin(x, y, src) {
+            var pinImgObj = new Image();
+            pinImgObj.onload = function () {
+                var img = new Kinetic.Image({
+                    x: x,
+                    y: y,
+                    id: noteId++,
+                    image: pinImgObj,
+                    width: 32,
+                    height: 32,
+                    draggable: true
+                });
+                noteLayer.add(img);
+                stage.add(noteLayer);
+
+                var note = $("#noteTemplate").clone();
+                note.attr('id', 'review-' + img.id());
+                note.on('change keyup keydown paste cut', 'textarea', function () {
+                    $(this).height(0).height(this.scrollHeight);
+                }).find('textarea').change();
+                $('.reviews').append(note);
+                img.on('mouseover', function () {
+                    drawLine(this.id(), this.x(), this.y());
+                }).on('dragmove', function () {
+                    drawLine(this.id(), this.x(), this.y());
+                });
+            };
+            pinImgObj.src = src;
+        }
+
+        /**
+         * 画线条
+         * @param id
+         * @param x
+         * @param y
+         */
+        function drawLine(id, x, y) {
+            var lineId = '#line-' + id;
+            $(lineId).remove();
+
+            if (typeof x !== 'number') {
+                x = parseInt(x);
+            }
+
+            if (typeof y !== 'number') {
+                y = parseInt(y);
+            }
+
+            var pinPosition = $('#container').position();
+            var startX = pinPosition.left + x + 32;
+            var startY = pinPosition.top + y + 16;
+            var noteId = '#review-' + id;
+            var notePostion = $(noteId).position();
+            $('#container').line(startX, startY, notePostion.left, notePostion.top, {
+                color: "red",
+                zindex: 1,
+                id: 'line-' + id,
+                className: 'line'
+            });
+        }
     });
 </script>
 </body>
